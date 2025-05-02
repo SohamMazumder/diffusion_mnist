@@ -163,6 +163,7 @@ class UNet(nn.Module):
         x = self.last_conv(x)
         return x
 
+
 class DownBlock(nn.Module):
     def __init__(self, in_channels, out_channels, time_emb_dim=None):
         super(DownBlock, self).__init__()
@@ -171,6 +172,7 @@ class DownBlock(nn.Module):
     def forward(self, x):
         x = self.downsample(x)
         return x
+
 
 class UpBlock(nn.Module):
     def __init__(self, in_channels, out_channels, time_emb_dim=None):
