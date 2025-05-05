@@ -15,9 +15,10 @@ class PositionalEmbedding(nn.Module):
         self.dim = dim
 
     def forward(self, t):
+        t = torch.as_tensor(t, dtype=torch.float32)
         half = self.dim // 2
         emb = math.log(10000.0) / (half - 1)
-        emb = torch.exp(torch.arange(half, dtype=torch.float32, device=x.device) * -emb)
+        emb = torch.exp(torch.arange(half, dtype=torch.float32) * -emb)
         emb = t[:, None] * emb[None, :]
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
@@ -33,14 +34,14 @@ class ResBlock(nn.Module):
 
         self.in_layers = nn.Sequential(
             nn.GroupNorm(32, in_channels),
-            nn.ReLU(),
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(in_channels, out_channels, 3, stride=1, padding=1),
         )
 
         self.out_layers = nn.Sequential(
             nn.GroupNorm(32, out_channels),
-            nn.ReLU(),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
+            nn.SiLU(),
+            nn.Conv2d(out_channels, out_channels, 3, stride=1, padding=1),
         )
 
         self.time_emb_layer = nn.Sequential(
@@ -51,6 +52,8 @@ class ResBlock(nn.Module):
 
     def forward(self, x, time_emb=None):
         h = self.in_layers(x)
+
+        # Apply time embedding if provided
         if time_emb is not None:
             time_emb = self.time_emb_layer(time_emb).unsqueeze(2).unsqueeze(3)
             h = h + time_emb
