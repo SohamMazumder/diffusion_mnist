@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
+import argparse
 
 import os
 from datetime import datetime
@@ -18,13 +19,14 @@ from model import UNet
 from scheduler import LinearNoiseScheduler
 
 
-def train(device=None):
+def train(args):
+    device = args.device
     torch.manual_seed(1)
-    model = UNet(in_channels=1)
-    optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
 
-    if device is None:
-        device = 'cuda:0'
+    model = UNet(in_channels=1)
+    if args.checkpoint:
+        print(f"Loading checkpoint from {args.checkpoint}")
+        model.load_state_dict(torch.load(args.checkpoint, map_location=device))
     model = model.to(device)
 
     log_dir = f"logs/mnist_diff-{model.__class__.__name__}-" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -39,8 +41,6 @@ def train(device=None):
     writer.add_figure("diffusion_schedule", plt.gcf(), 0)
     plt.close(schedule_plot)
 
-    print(f"Number of parameters: {cu.count_parameters(optimizer)}")
-
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize((32, 32)),
@@ -49,7 +49,10 @@ def train(device=None):
     mnist = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     loader = DataLoader(mnist, batch_size=batch_size, shuffle=True, num_workers=4)
 
+    optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
     criterion = torch.nn.MSELoss()
+
+    print(f"Number of parameters: {cu.count_parameters(optimizer)}")
 
     # Training
     epochs = 100
@@ -127,6 +130,9 @@ def sample(model, scheduler, device):
 
 
 if __name__ == "__main__":
-    device = 'cuda:0'
-    # cu.set_device(device)
-    train(device)
+    args = argparse.ArgumentParser()
+    args.add_argument('--device', type=str, default='cuda:0', help='Device to use for training')
+    args.add_argument('--checkpoint', default=None, help='Path to checkpoint to load')
+    args = args.parse_args()
+
+    train(args)
