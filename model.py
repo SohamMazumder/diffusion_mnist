@@ -15,10 +15,9 @@ class PositionalEmbedding(nn.Module):
         self.dim = dim
 
     def forward(self, t):
-        t = torch.as_tensor(t, dtype=torch.float32)
         half = self.dim // 2
         emb = math.log(10000.0) / (half - 1)
-        emb = torch.exp(torch.arange(half, dtype=torch.float32) * -emb)
+        emb = torch.exp(torch.arange(half, dtype=torch.float32, device=t.device) * -emb)
         emb = t[:, None] * emb[None, :]
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
