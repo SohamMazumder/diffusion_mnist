@@ -111,24 +111,16 @@ def sample(model, scheduler, device):
     We save the x0 predictions
     """
     xt = torch.randn((8, 1, 32, 32), device=device)
+    inference_timesteps = 1000
     samples = []
-    for i in tqdm(reversed(range(1000))):
+    for i in tqdm(reversed(range(inference_timesteps))):
         # Get prediction of noise
         noise_pred = model(xt, torch.as_tensor(i).unsqueeze(0).to(device))
 
         # Use scheduler to get x0 and xt-1
         xt, x0_pred = scheduler.sample_prev_timestep(xt, noise_pred, torch.as_tensor(i).to(device))
 
-        # Save x0
         ims = torch.clamp(xt, -1., 1.).detach().cpu()
-
-        # ims = (ims + 1) / 2
-        # grid = make_grid(ims, nrow=train_config['num_grid_rows'])
-        # img = torchvision.transforms.ToPILImage()(grid)
-        # if not os.path.exists(os.path.join(train_config['task_name'], 'samples')):
-        #     os.mkdir(os.path.join(train_config['task_name'], 'samples'))
-        # img.save(os.path.join(train_config['task_name'], 'samples', 'x0_{}.png'.format(i)))
-        # img.close()
         samples.append(ims)
     return samples
 
