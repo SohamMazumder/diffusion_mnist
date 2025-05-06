@@ -79,22 +79,26 @@ def train(args):
 
             epoch_loss.append(loss.item())
 
-        writer.add_scalar("loss", np.mean(epoch_loss), epoch_idx)
-
-        with torch.no_grad():
-            model.eval()
-            samples = sample(model, scheduler, device)
-            writer.add_image("samples", utils.make_grid(cu.range_2_1(samples[-1]), nrow=4), epoch_idx)
-            video_writer = imageio.get_writer(os.path.join(log_dir, f"epoch-{epoch_idx + 1:03d}.mp4"), mode='I', fps=10, codec='libx264', quality=7)
-            for frame in samples:
-                frame = cu.interpolate(frame[0:1], 256, antialias=True)[0]
-                frame = cu.range_2_255(frame).round().clamp(0, 255).to(torch.uint8).movedim(0, -1).cpu().numpy()
-                video_writer.append_data(frame)
-            video_writer.close()
+        writer.add_scalar("train/loss", np.mean(epoch_loss), epoch_idx)
         print(f"Epoch {epoch_idx + 1}/{epochs}, Loss: {np.mean(epoch_loss):.4f}")
 
-        # Save the model
+        # _, x0_pred = scheduler.sample_prev_timestep(noise, noise_pred, torch.as_tensor(0.).to(device))
+        # img_list =
+        # writer.add_image("train/x0_pred", utils.make_grid(cu.range_2_1(x0_pred), nrow=4), epoch_idx)
+
         if epoch_idx % 5 == 0:
+            with torch.no_grad():
+                model.eval()
+                samples = sample(model, scheduler, device)
+                writer.add_image("samples", utils.make_grid(cu.range_2_1(samples[-1]), nrow=4), epoch_idx)
+                video_writer = imageio.get_writer(os.path.join(log_dir, f"epoch-{epoch_idx + 1:03d}.mp4"), mode='I', fps=10, codec='libx264', quality=7)
+                for frame in samples:
+                    frame = cu.interpolate(frame[0:1], 256, antialias=True)[0]
+                    frame = cu.range_2_255(frame).round().clamp(0, 255).to(torch.uint8).movedim(0, -1).cpu().numpy()
+                    video_writer.append_data(frame)
+                video_writer.close()
+
+            # Save the model
             torch.save(model.state_dict(), os.path.join(log_dir, f"model-{epoch_idx + 1:03d}.pth"))
 
     writer.close()
