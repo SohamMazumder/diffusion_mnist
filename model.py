@@ -74,7 +74,7 @@ class UNet(nn.Module):
         self.in_channels = in_channels
         self.positional_embedding = PositionalEmbedding(time_emb_dim)
 
-        self.conv0 = nn.Conv2d(in_channels, down_channels[0], kernel_size=3, padding=1)
+        self.conv0 = nn.Conv2d(self.in_channels, down_channels[0], kernel_size=3, padding=1)
 
         self.down_blocks = nn.ModuleList([])
         for i in range(len(down_channels)):
@@ -103,7 +103,7 @@ class UNet(nn.Module):
                 nn.MultiheadAttention(out_channels, num_heads=8),
                 UpBlock(out_channels, out_channels)]))
 
-        self.last_conv = nn.Conv2d(up_channels[-1], 3, kernel_size=3, padding=1)
+        self.last_conv = nn.Conv2d(up_channels[-1], self.in_channels, kernel_size=3, padding=1)
 
     def forward(self, x, time):
         # Positional embedding
