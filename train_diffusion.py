@@ -31,7 +31,7 @@ def train(device=None):
     os.makedirs(log_dir, exist_ok=True)
     writer = SummaryWriter(log_dir)
 
-    batch_size = 8
+    batch_size = 64
 
     # Create the noise scheduler
     scheduler = LinearNoiseScheduler(num_timesteps=1000, device=device)
@@ -90,6 +90,12 @@ def train(device=None):
             video_writer.close()
         print(f"Epoch {epoch_idx + 1}/{epochs}, Loss: {np.mean(epoch_loss):.4f}")
 
+        # Save the model
+        if epoch_idx % 5 == 0:
+            torch.save(model.state_dict(), os.path.join(log_dir, f"model-{epoch_idx + 1:03d}.pth"))
+
+    writer.close()
+
 
 @torch.no_grad()
 def sample(model, scheduler, device):
@@ -97,7 +103,7 @@ def sample(model, scheduler, device):
     Sample stepwise by going backward one timestep at a time.
     We save the x0 predictions
     """
-    xt = torch.randn((2, 1, 32, 32), device=device)
+    xt = torch.randn((8, 1, 32, 32), device=device)
     samples = []
     for i in tqdm(reversed(range(1000))):
         # Get prediction of noise
