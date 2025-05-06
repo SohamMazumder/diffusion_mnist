@@ -68,7 +68,8 @@ class UNet(nn.Module):
                  in_channels=3,
                  down_channels=(64, 128, 256, 512),
                  up_channels=(512, 256, 128, 64),
-                 time_emb_dim=128):
+                 time_emb_dim=128,
+                 num_attention_heads=2):
         super(UNet, self).__init__()
 
         self.in_channels = in_channels
@@ -84,12 +85,12 @@ class UNet(nn.Module):
             self.down_blocks.append(nn.ModuleList([
                 ResBlock(in_channels, out_channels, time_emb_dim),
                 ResBlock(out_channels, out_channels, time_emb_dim),
-                nn.MultiheadAttention(out_channels, num_heads=8),
+                nn.MultiheadAttention(out_channels, num_heads=num_attention_heads),
                 DownBlock(out_channels, out_channels)]))
 
         self.middle_block = nn.ModuleList([
             ResBlock(down_channels[-1], down_channels[-1], time_emb_dim),
-            nn.MultiheadAttention(down_channels[-1], num_heads=8),
+            nn.MultiheadAttention(down_channels[-1], num_heads=num_attention_heads),
             ResBlock(down_channels[-1], down_channels[-1], time_emb_dim)])
 
         self.up_blocks = nn.ModuleList([])
@@ -100,7 +101,7 @@ class UNet(nn.Module):
             self.up_blocks.append(nn.ModuleList([
                 ResBlock(in_channels, out_channels, time_emb_dim),
                 ResBlock(out_channels, out_channels, time_emb_dim),
-                nn.MultiheadAttention(out_channels, num_heads=8),
+                nn.MultiheadAttention(out_channels, num_heads=num_attention_heads),
                 UpBlock(out_channels, out_channels)]))
 
         self.last_conv = nn.Conv2d(up_channels[-1], self.in_channels, kernel_size=3, padding=1)
