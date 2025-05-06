@@ -71,10 +71,8 @@ class UNet(nn.Module):
                  time_emb_dim=128):
         super(UNet, self).__init__()
 
-        self.time_embedding = nn.Sequential(
-            PositionalEmbedding(time_emb_dim),
-            nn.Linear(time_emb_dim, time_emb_dim),
-            nn.ReLU())
+        self.in_channels = in_channels
+        self.positional_embedding = PositionalEmbedding(time_emb_dim)
 
         self.conv0 = nn.Conv2d(in_channels, down_channels[0], kernel_size=3, padding=1)
 
@@ -108,7 +106,8 @@ class UNet(nn.Module):
         self.last_conv = nn.Conv2d(up_channels[-1], 3, kernel_size=3, padding=1)
 
     def forward(self, x, time):
-        time_emb = self.time_embedding(time)
+        # Positional embedding
+        time_emb = self.positional_embedding(time)
 
         x = self.conv0(x)
 
