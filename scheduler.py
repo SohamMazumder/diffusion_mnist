@@ -1,12 +1,13 @@
+import matplotlib.pyplot as plt
 import torch
 
 
 class LinearNoiseScheduler:
-    def __init__(self, num_timesteps, beta_start=1e-4, beta_end=0.0):
+    def __init__(self, num_timesteps, beta_start=1e-4, beta_end=0.02, device='cpu'):
         self.num_timesteps = num_timesteps
         self.beta_start = beta_start
         self.beta_end = beta_end
-        self.betas = torch.linspace(beta_start, beta_end, num_timesteps)
+        self.betas = torch.linspace(beta_start, beta_end, num_timesteps, device=device)
         self.alphas = 1 - self.betas
         self.alpha_cumprod = torch.cumprod(self.alphas, dim=0)
         self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
@@ -18,10 +19,11 @@ class LinearNoiseScheduler:
         Args:
             original_image (torch.Tensor): The original image tensor.
             noise (torch.Tensor): The noise tensor.
-            t (int): The current timestep.
+            t (torch.Tensor) : The current timestep.
         Returns:
             torch.Tensor: The noisy image.
         """
+
         batch_size = original_image.shape[0]
         sqrt_alpha_cumprod_t = self.sqrt_alpha_cumprod[t].view(batch_size, 1, 1, 1)
         sqrt_one_minus_alpha_cumprod_t = self.sqrt_one_minus_alpha_cumprod[t].view(batch_size, 1, 1, 1)
@@ -35,10 +37,11 @@ class LinearNoiseScheduler:
         Args:
             xt (torch.Tensor): The current noisy image.
             noise_pred (torch.Tensor): The predicted noise.
-            t (int): The current timestep.
+            t (torch.Tensor) : The current timestep.
         Returns:
             torch.Tensor: The sampled previous image.
         """
+
         x0 = (xt - (self.sqrt_one_minus_alpha_cumprod[t] * noise_pred)) / self.sqrt_alpha_cumprod[t]
         x0 = x0.clamp(-1, 1)  # Ensure the values are within the valid range
 
@@ -53,3 +56,18 @@ class LinearNoiseScheduler:
             z = torch.randn(xt.shape, device=xt.device)
 
         return mean + sigma*z, x0
+
+    def plot(self):
+        """ Plot schedules and return the figure.
+        :return figure. Close it by plt.close(f)
+        """
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.betas.cpu().numpy(), label="betas")
+        plt.plot(self.alphas.cpu().numpy(), label="alphas")
+        plt.xlabel("t")
+        plt.ylabel("value")
+        plt.legend()
+        plt.title(
+            f"Diffusion: num_steps {self.num_timesteps}, beta_start {self.beta_start}, beta_end {self.beta_end}")
+        return plt.gcf()
+
