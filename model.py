@@ -10,6 +10,11 @@ import torch.nn.functional as F
 
 
 class PositionalEmbedding(nn.Module):
+    """
+    Sinusoidal positional embedding module.
+    This module computes positional encodings for given time steps.
+    Taken from Positional Embedding used in the original transformer paper "Attention is All You Need".
+    """
     def __init__(self, dim):
         super(PositionalEmbedding, self).__init__()
         self.dim = dim
@@ -24,6 +29,17 @@ class PositionalEmbedding(nn.Module):
 
 
 class ResBlock(nn.Module):
+    """
+    Residual block module.
+    Group normalization and SiLU activation are used.
+    Additionally, a time embedding can be added to the input (for diffusion models).
+    
+    Args:
+    - in_channels (int): The number of input channels.
+    - out_channels (int): The number of output channels.
+    - time_emb_dim (int, optional): The time embedding dimension. Defaults to None.
+    """
+
 
     def __init__(self, in_channels, out_channels, time_emb_dim=None):
         super().__init__()
@@ -64,6 +80,20 @@ class ResBlock(nn.Module):
 
 
 class UNet(nn.Module):
+    """
+    UNet model for image denoising.
+
+    This module implements the UNet architecture for image denoising.
+    Consists of Down, Middle, and Up blocks built with Residual and Attention blocks.
+
+    
+    Args:
+    - in_channels (int): The number of input channels.
+    - down_channels (tuple): The number of channels in each down block.
+    - up_channels (tuple): The number of channels in each up block.
+    - time_emb_dim (int, optional): The time embedding dimension. Defaults to 128.
+    - num_attention_heads (int, optional): The number of attention heads. Defaults to 2.
+    """
     def __init__(self,
                  in_channels=3,
                  down_channels=(64, 128, 256, 512),
@@ -167,6 +197,9 @@ class UNet(nn.Module):
 
 
 class DownBlock(nn.Module):
+    """
+    Downsampling block module.
+    """
     def __init__(self, in_channels, out_channels, time_emb_dim=None):
         super(DownBlock, self).__init__()
         self.downsample = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1)
@@ -177,6 +210,9 @@ class DownBlock(nn.Module):
 
 
 class UpBlock(nn.Module):
+    """
+    Upsampling block module.
+    """
     def __init__(self, in_channels, out_channels, time_emb_dim=None):
         super(UpBlock, self).__init__()
         self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
