@@ -67,13 +67,15 @@ def train(args):
             x0 = noise = torch.randn_like(im).to(device)
 
             # Sample timestep
-            t = torch.randint(0, 1000, (x1.shape[0],)).to(device)
+            ti = torch.randint(0, 1000 + 1, (x1.size(0),), device=device)
+            t = ti.to(torch.float32) / 1000 # In flow matching t is [0,1]
+            t = t[:, None, None, None]
 
             # Add noise to images according to timestep
             # noisy_im = scheduler.add_noise(im, noise, t)
 
             xt = (1 - t) * x0 + t * x1
-            u = model(xt, t)    # velocity prediction
+            u = model(xt, ti)    # velocity prediction
 
             dxt = x1 - x0
 
@@ -121,12 +123,12 @@ def sample(model, scheduler, device):
     t = torch.arange(1, inference_timesteps + 1, device=xt.device, dtype=torch.int64)
     samples = []
     for ti in tqdm(t):
-        ti = ti[None].expand(x)  # Expand to batch size
+        ti = ti[None].expand(xt.shape[0])  # Expand to batch size
 
-        u = model(x, ti)  # velocity prediction
+        u = model(xt, ti)  # velocity prediction
 
-        x = x + d * u
-        samples.append(x)
+        xt = xt + d * u
+        samples.append(xt)
     return samples
 
 
