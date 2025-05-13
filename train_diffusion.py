@@ -61,19 +61,24 @@ def train(args):
         epoch_loss = []
         for im, _ in tqdm(loader):
             optimizer.zero_grad()
-            im = im.float().to(device)
+            x1 = im = im.float().to(device)
 
             # Sample random noise
-            noise = torch.randn_like(im).to(device)
+            x0 = noise = torch.randn_like(im).to(device)
 
             # Sample timestep
-            t = torch.randint(0, 1000, (im.shape[0],)).to(device)
+            t = torch.randint(0, 1000, (x1.shape[0],)).to(device)
 
             # Add noise to images according to timestep
-            noisy_im = scheduler.add_noise(im, noise, t)
-            noise_pred = model(noisy_im, t)
+            # noisy_im = scheduler.add_noise(im, noise, t)
 
-            loss = criterion(noise_pred, noise)
+            xt = (1 - t) * x0 + t * x1
+            u = model(xt, t)    # velocity prediction
+
+            dxt = x1 - x0
+
+            loss = criterion(u, dxt)
+
             loss.backward()
             optimizer.step()
 
@@ -110,18 +115,18 @@ def sample(model, scheduler, device):
     Sample stepwise by going backward one timestep at a time.
     We save the x0 predictions
     """
-    xt = torch.randn((8, 1, 32, 32), device=device)
+    xt = torch.randn((16, 1, 32, 32), device=device)
     inference_timesteps = 1000
+    d = 1 / inference_timesteps
+    t = torch.arange(1, inference_timesteps + 1, device=xt.device, dtype=torch.int64)
     samples = []
-    for i in tqdm(reversed(range(inference_timesteps))):
-        # Get prediction of noise
-        noise_pred = model(xt, torch.as_tensor(i).unsqueeze(0).to(device))
+    for ti in tqdm(t):
+        ti = ti[None].expand(x)  # Expand to batch size
 
-        # Use scheduler to get x0 and xt-1
-        xt, x0_pred = scheduler.sample_prev_timestep(xt, noise_pred, torch.as_tensor(i).to(device))
+        u = model(x, ti)  # velocity prediction
 
-        ims = torch.clamp(xt, -1., 1.).detach().cpu()
-        samples.append(ims)
+        x = x + d * u
+        samples.append(x)
     return samples
 
 
