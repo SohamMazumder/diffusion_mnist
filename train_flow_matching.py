@@ -50,12 +50,12 @@ def train(args):
     for epoch_idx in range(epochs):
         model.train()
         epoch_loss = []
-        for im, _ in tqdm(loader):
+        for x1, _ in tqdm(loader):
             optimizer.zero_grad()
-            x1 = im = im.float().to(device)
+            x1 = x1.float().to(device)
 
             # Sample random noise
-            x0 = noise = torch.randn_like(im).to(device)
+            x0 = torch.randn_like(x1).to(device)
 
             # Sample timestep
             ti = torch.randint(0, 1000 + 1, (x1.size(0),), device=device)
