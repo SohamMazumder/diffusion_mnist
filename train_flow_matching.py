@@ -52,7 +52,7 @@ def train(args):
     optimizer = torch.optim.Adam(model.parameters(), lr=2e-5)
     criterion = torch.nn.MSELoss()
 
-    print(f"Number of parameters: {cu.count_parameters(optimizer)}")
+    print(f"Number of parameters: {cu.count_parameters(model)}")
 
     # Training
     epochs = 100
