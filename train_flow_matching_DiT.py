@@ -95,9 +95,11 @@ def get_mnist_dataloaders(config):
     return train_loader, test_loader
 
 
-def sample_time(batch_size, eps=1e-5):
+def sample_time(batch_size, eps=1e-5, device=None):
     """Sample uniform time steps in [eps, 1]"""
-    return torch.rand(batch_size, device='cuda') * (1 - eps) + eps
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    return torch.rand(batch_size, device=device) * (1 - eps) + eps
 
 
 def get_flow_matching_noise(x_0, x_1, t):
