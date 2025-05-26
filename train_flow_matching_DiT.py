@@ -333,7 +333,7 @@ def main():
         
         # Generate samples
         if epoch % 5 == 0 or epoch == config.num_epochs:
-            samples = generate_samples(model, config, device)
+            samples = generate_samples(model, config, device, use_ode_solver=True)
             
             # Log samples to TensorBoard
             writer.add_image("samples", make_grid(samples * 0.5 + 0.5, nrow=4), epoch)
