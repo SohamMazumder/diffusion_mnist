@@ -322,17 +322,17 @@ def main():
         # Train
         train_loss = train_epoch(model, train_loader, optimizer, device, epoch, config)
         train_losses.append(train_loss)
-        
-        # Evaluate
-        val_loss = evaluate(model, test_loader, device, epoch, config)
-        val_losses.append(val_loss)
-        
+
         # Log losses to TensorBoard
         writer.add_scalar("train/loss", train_loss, epoch)
-        writer.add_scalar("val/loss", val_loss, epoch)
         
         # Generate samples
         if epoch % 5 == 0 or epoch == config.num_epochs:
+            # Evaluate
+            val_loss = evaluate(model, test_loader, device, epoch, config)
+            val_losses.append(val_loss)
+            writer.add_scalar("val/loss", val_loss, epoch)
+
             samples = generate_samples(model, config, device, use_ode_solver=True)
             
             # Log samples to TensorBoard
