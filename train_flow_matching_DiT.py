@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+from torchdiffeq import odeint
 
 from DiT import DiT
 
@@ -199,32 +200,75 @@ def evaluate(model, test_loader, device, epoch, config):
     return avg_loss
 
 
-def generate_samples(model, config, device, num_samples=16, nrow=4):
-    """Generate samples using the trained model"""
+def generate_samples(model, config, device, num_samples=16, nrow=4, use_ode_solver=False):
+    """
+    Generate samples using the trained model
+    Args:
+        model: The flow matching model
+        config: Configuration object
+        device: Device to use
+        num_samples: Number of samples to generate
+        nrow: Number of rows for the grid
+        use_ode_solver: Whether to use ODE solver (True) or Euler method (False)
+    """
     model.eval()
     
     with torch.no_grad():
         # Start with random noise
         x = torch.randn(num_samples, config.in_channels, config.img_size, config.img_size, device=device)
         
-        # Flow-based generation with Euler solver
-        num_steps = 100  # Number of integration steps
-        
-        for i in tqdm(range(num_steps, 0, -1), desc="Generating samples"):
-            # Normalized time step from 0 to 1
-            t = torch.ones(num_samples, device=device) * i / num_steps
-            
-            # Scale time steps for the model (from [0,1] to [0,1000])
-            t_scaled = (t * 1000).to(device)
-            
-            # Predict vector field
-            vector_field = model(x, t_scaled)
-            
-            # Euler step
-            x = x + vector_field * (1 / num_steps)
-            
+        if use_ode_solver:
+            # Define the ODE function for the vector field
+            def ode_func(t, x):
+                # Map t from [0,1] to [1000,0] (reverse direction)
+                t_scaled = (1 - t) * 1000
+                t_batch = torch.ones(num_samples, device=device) * t_scaled
+
+                # Predict the vector field
+                vector_field = model(x, t_batch)
+                return vector_field
+
+            # Use ODE solver to integrate from noise to data (t=0 to t=1)
+            t_span = torch.tensor([0.0, 1.0], device=device)
+
+            print("Generating samples using ODE solver...")
+
+            # ODE integration (from t=0 to t=1)
+            solution = odeint(
+                ode_func,
+                x,
+                t_span,
+                method='dopri5',
+                atol=1e-5,
+                rtol=1e-5,
+                options={"step_size": 0.01}
+            )
+
+            # Get the final state (at t=1)
+            x = solution[1]
+
+            # Save with a different name to distinguish from Euler method samples
+            save_path = os.path.join(config.output_dir, f"samples_epoch_ode.png")
+        else:
+            # Flow-based generation with Euler solver
+            num_steps = 100  # Number of integration steps
+
+            for i in tqdm(range(num_steps, 0, -1), desc="Generating samples (Euler)"):
+                # Normalized time step from 0 to 1
+                t = torch.ones(num_samples, device=device) * i / num_steps
+
+                # Scale time steps for the model (from [0,1] to [0,1000])
+                t_scaled = (t * 1000).to(device)
+
+                # Predict vector field
+                vector_field = model(x, t_scaled)
+
+                # Euler step
+                x = x + vector_field * (1 / num_steps)
+
+            save_path = os.path.join(config.output_dir, f"samples_epoch_euler.png")
+
         # Save the generated samples
-        save_path = os.path.join(config.output_dir, f"samples_epoch.png")
         save_image(x * 0.5 + 0.5, save_path, nrow=nrow)
         
         return x
@@ -276,20 +320,21 @@ def main():
     
     for epoch in range(1, config.num_epochs + 1):
         # Train
-        train_loss = train_epoch(model, train_loader, optimizer, device, epoch, config)
-        train_losses.append(train_loss)
-        
-        # Evaluate
-        val_loss = evaluate(model, test_loader, device, epoch, config)
-        val_losses.append(val_loss)
-        
+        with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+            train_loss = train_epoch(model, train_loader, optimizer, device, epoch, config)
+            train_losses.append(train_loss)
+
         # Log losses to TensorBoard
         writer.add_scalar("train/loss", train_loss, epoch)
-        writer.add_scalar("val/loss", val_loss, epoch)
         
         # Generate samples
         if epoch % 5 == 0 or epoch == config.num_epochs:
-            samples = generate_samples(model, config, device)
+            # Evaluate
+            val_loss = evaluate(model, test_loader, device, epoch, config)
+            val_losses.append(val_loss)
+            writer.add_scalar("val/loss", val_loss, epoch)
+
+            samples = generate_samples(model, config, device, use_ode_solver=True)
             
             # Log samples to TensorBoard
             writer.add_image("samples", make_grid(samples * 0.5 + 0.5, nrow=4), epoch)
@@ -327,4 +372,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()
