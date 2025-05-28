@@ -320,8 +320,9 @@ def main():
     
     for epoch in range(1, config.num_epochs + 1):
         # Train
-        train_loss = train_epoch(model, train_loader, optimizer, device, epoch, config)
-        train_losses.append(train_loss)
+        with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+            train_loss = train_epoch(model, train_loader, optimizer, device, epoch, config)
+            train_losses.append(train_loss)
 
         # Log losses to TensorBoard
         writer.add_scalar("train/loss", train_loss, epoch)
