@@ -60,24 +60,25 @@ def train(args):
         model.train()
         epoch_loss = []
         for im, _ in tqdm(loader):
-            optimizer.zero_grad()
-            im = im.float().to(device)
+            with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+                optimizer.zero_grad()
+                im = im.float().to(device)
 
-            # Sample random noise
-            noise = torch.randn_like(im).to(device)
+                # Sample random noise
+                noise = torch.randn_like(im).to(device)
 
-            # Sample timestep
-            t = torch.randint(0, 1000, (im.shape[0],)).to(device)
+                # Sample timestep
+                t = torch.randint(0, 1000, (im.shape[0],)).to(device)
 
-            # Add noise to images according to timestep
-            noisy_im = scheduler.add_noise(im, noise, t)
-            noise_pred = model(noisy_im, t)
+                # Add noise to images according to timestep
+                noisy_im = scheduler.add_noise(im, noise, t)
+                noise_pred = model(noisy_im, t)
 
-            loss = criterion(noise_pred, noise)
-            loss.backward()
-            optimizer.step()
+                loss = criterion(noise_pred, noise)
+                loss.backward()
+                optimizer.step()
 
-            epoch_loss.append(loss.item())
+                epoch_loss.append(loss.item())
 
         writer.add_scalar("train/loss", np.mean(epoch_loss), epoch_idx)
         print(f"Epoch {epoch_idx + 1}/{epochs}, Loss: {np.mean(epoch_loss):.4f}")
